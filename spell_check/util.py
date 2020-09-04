@@ -15,7 +15,7 @@
 # regard for the group size. Submit your solution in a .zip file including a
 # Jupyter notebook (.ipynb file) demonstrating its usage.
 import re
-
+from comparator import compare
 import numpy as np
 
 DICT_DATA_2 = "./dict2.txt"
@@ -54,9 +54,10 @@ def init_dict(FILE_NAME):
 
 
 def string_to_tokens(input):
-#     tokens = re.findall("[A-Z]{2,}(?![a-z])|[A-Z][a-z]+(?=[A-Z])|[\'\w\-]+",input)
+    #     tokens = re.findall("[A-Z]{2,}(?![a-z])|[A-Z][a-z]+(?=[A-Z])|[\'\w\-]+",input)
     tokens = input.split(" ")
     return tokens
+
 
 def spell_check_str(input, dictionary):
     if len(input) == 0:
@@ -71,7 +72,12 @@ def spell_check_str(input, dictionary):
         return 1
 
 
-def calc_dist(A, B, k=2):
+def calc_dist(A, B, k):
+    return compare(A, B, k)
+
+
+def calc_dist_deprecated(A, B, k=2):
+
     # Initialize matrix
     xs = len(A)+1
     ys = len(B)+1
@@ -92,22 +98,25 @@ def calc_dist(A, B, k=2):
             grid[x][y] = min(grid[x-1][y] + 1,      # Cost of deletions
                              grid[x][y-1] + 1,          # Cost of insertions
                              grid[x-1][y-1] + cost)     # Cost of substitutions
-            # if(grid[x][y] >= k):
-            #     return 100
+            if(grid[x][y] >= k):
+                return 100
     return grid[x][y]
+
 
 def find_closest(input, dictionary):
     match_word = dictionary.pop()
-    dist = calc_dist(input, match_word)
+    dist = calc_dist(input, match_word, 3)
     for word in dictionary:
         if abs(len(word) - len(input)) >= dist:
             continue
-        temp_dist = calc_dist(input, word)
+        temp_dist = calc_dist(input, word, 3)
         if temp_dist < dist:
             match_word = word
             dist = temp_dist
         if dist == 1:
-            return (match_word, dist)
+            return match_word
+    return match_word
+
 
 def sub_word(word, dictionary):
     mod_word = word.split('\'')
@@ -121,10 +130,12 @@ def sub_word(word, dictionary):
         return mod_closest
     return word
 
+
 def correct_arr(arr, dictionary):
     for i, word in enumerate(arr):
         arr[i] = sub_word(word, dictionary)
-    return arr.join(" ")
+    return " ".join(arr)
+
 
 def spell_check_list(arr, dictionary):
     err = []
@@ -132,10 +143,11 @@ def spell_check_list(arr, dictionary):
         if not spell_check_str(word, dictionary):
             err.append(word)
     return err
-        
+
+
 if __name__ == "__main__":
     word_dict = init_dict(DICT_DATA)
-    tokens = string_to_tokens(SHORT_EXAMPLE_STR)
+    tokens = string_to_tokens(EXAMPLE_STR)
     err = spell_check_list(tokens, word_dict)
     print(correct_arr(tokens, word_dict))
     # subs = sub_err(tokens, word_dict)
