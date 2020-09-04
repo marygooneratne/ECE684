@@ -15,7 +15,9 @@
 # regard for the group size. Submit your solution in a .zip file including a
 # Jupyter notebook (.ipynb file) demonstrating its usage.
 import re
+import numpy as np
 
+DICT_DATA_2 = "dict2.txt"
 DICT_DATA = "dict.txt"
 EXAMPLE_STR = "The family of Dashwood had long been settled i Sussex \
         Their estete was large, and their residence was at Norlad Park,\
@@ -39,6 +41,7 @@ EXAMPLE_STR = "The family of Dashwood had long been settled i Sussex \
         comfort which his age could receive; and the cheerfulness\
         of the children added a relitsh n his existence."
 
+
 def init_dict(FILE_NAME):
     f = open(FILE_NAME, "r")
     dict_set = set()
@@ -55,6 +58,31 @@ def spell_check(input, dictionary):
         return 0
     else: return 1
 
+def calc_dist(A, B):
+
+    # Initialize matrix
+    xs = len(A)+1
+    ys = len(B)+1
+    grid = np.zeros((xs, ys), dtype=int)
+
+    # Make the yumns
+    for i in range(1, xs):
+        for j in range(1, ys):
+            grid[i][0] = i
+            grid[0][j] = j
+
+    # Find cost of deletions,insertions and/or substitutions
+    for x in range(1, xs):
+        for y in range(1, ys):
+            if A[x-1] == B[y-1]:  # Letters on the same
+                cost = 0
+            else:
+                cost = 1
+            grid[x][y] = min(grid[x-1][y] + 1,      # Cost of deletions
+                             grid[x][y-1] + 1,          # Cost of insertions
+                             grid[x-1][y-1] + cost)     # Cost of substitutions
+    return grid[x][y]
+
 def spell_check_list(arr, dictionary):
     err = []
     for word in arr:
@@ -66,7 +94,12 @@ if __name__ == "__main__":
     word_dict = init_dict(DICT_DATA)
     tokens = string_to_tokens(EXAMPLE_STR)
     err = spell_check_list(tokens, word_dict)
-    print(err)
+
+    A = 'Apple Inc.'
+    B = 'apple Inc'
+    dist = calc_dist(A.lower(), B.lower())
+    # print(dist)
+    # print(err)
     # print(word_dict)
     # print(tokens)
-    
+    # print(word_dict)
