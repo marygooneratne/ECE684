@@ -50,10 +50,17 @@ def init_dict(FILE_NAME):
     return dict_set
 
 def string_to_tokens(input):
-    tokens = re.findall("[A-Z]{2,}(?![a-z])|[A-Z][a-z]+(?=[A-Z])|[\'\w\-]+",input)
+#     tokens = re.findall("[A-Z]{2,}(?![a-z])|[A-Z][a-z]+(?=[A-Z])|[\'\w\-]+",input)
+    tokens = input.split(" ")
     return tokens
 
-def spell_check(input, dictionary):
+def spell_check_str(input, dictionary):
+    if len(input) == 0:
+        return 1
+    if re.match("[A-Z][a-z'-]*", input):
+        return 1
+    if re.match("[^\w]+", input):
+        return 1
     if input not in dictionary:
         return 0
     else: return 1
@@ -81,13 +88,6 @@ def calc_dist(A, B):
                              grid[x-1][y-1] + cost)     # Cost of substitutions
     return grid[x][y]
 
-def spell_check_list(arr, dictionary):
-    err = []
-    for word in arr:
-        if not spell_check(word, dictionary):
-            err.append(word)
-    return err
-
 def find_closest(input, dictionary):
     match_word = dictionary.pop()
     dist = calc_dist(input, match_word)
@@ -98,22 +98,38 @@ def find_closest(input, dictionary):
             dist = temp_dist
         if dist == 1:
             return (match_word, dist)
-    return (match_word, dist)
 
-def sub_err(arr, dictionary):
-    subs = []
+def sub_word(word, dictionary):
+    mod_word = word.split('\'')
+    suffix = ''
+    if len(mod_word) > 1:
+        suffix = mod_word[1]
+    mod_word = mod_word[0]
+    if not spell_check_str(word, dictionary):
+        closest = find_closest(word, dictionary)
+        mod_closest = closest + '\'' + suffix
+        return mod_closest
+    return word
+
+def correct_arr(arr, dictionary):
+    for i, word in enumerate(arr):
+        arr[i] = sub_word(word, dictionary)
+    return arr.join(" ")
+
+def spell_check_list(arr, dictionary):
+    err = []
     for word in arr:
-        if not spell_check(word, dictionary):
-            subs.append(find_closest(word, dictionary))
-    return subs
-        
+        if not spell_check_str(word, dictionary):
+            err.append(word)
+    return err
         
 if __name__ == "__main__":
     word_dict = init_dict(DICT_DATA)
     tokens = string_to_tokens(EXAMPLE_STR)
     err = spell_check_list(tokens, word_dict)
-    subs = sub_err(tokens, word_dict)
-    print(subs)
+    print(correct_arr(tokens, word_dict))
+    # subs = sub_err(tokens, word_dict)
+    # print(subs)
     # print(err)
     # print(word_dict)
     # print(tokens)
