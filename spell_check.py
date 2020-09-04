@@ -14,8 +14,30 @@
 # You may work in a group of 1 or 2. Submissions will be graded without
 # regard for the group size. Submit your solution in a .zip file including a
 # Jupyter notebook (.ipynb file) demonstrating its usage.
+import re
 
 DICT_DATA = "dict.txt"
+EXAMPLE_STR = "The family of Dashwood had long been settled i Sussex \
+        Their estete was large, and their residence was at Norlad Park,\
+        in the centre of their property, where, for many generations,\
+        they had lived in so respectable a manner as to engage \
+        the general good opinion of their surrounding acquaintance.\
+        The late owner of thfs estat was a single man, who lived\
+        to a very advanced age, and who for many years of hijs life,\
+        had a constant companion nd housekeeper in his sister.\
+        But her death, which happened ten ryears beore his own,\
+        produced a great alteration in his home; fuor gto supply\
+        her lodss, he invited and eceivepd into his house the family\
+        of his nephew Mr. Henry Dashwood, the legal inheritkr\
+        of the Norland estate, and te lperqson to wsom he intended\
+        to bequeath it.  In the society o his nephew and niece,\
+        and theoir childrn, the old Gentaeman's das were\
+        comfortably spent.  His attacsment to them all increased.\
+        The consmant attention of Mr. and Mrs. Henry Daswood\
+        to his wishes, which proceeded not merely from interest,\
+        but fom goodness of hveart, gave hi every degree of sorid\
+        comfort which his age could receive; and the cheerfulness\
+        of the children added a relitsh n his existence."
 
 def init_dict(FILE_NAME):
     f = open(FILE_NAME, "r")
@@ -24,6 +46,27 @@ def init_dict(FILE_NAME):
         dict_set.add(word.split('\n')[0])
     return dict_set
 
+def string_to_tokens(input):
+    tokens = re.findall("[A-Z]{2,}(?![a-z])|[A-Z][a-z]+(?=[A-Z])|[\'\w\-]+",input)
+    return tokens
+
+def spell_check(input, dictionary):
+    if input not in dictionary:
+        return 0
+    else: return 1
+
+def spell_check_list(arr, dictionary):
+    err = []
+    for word in arr:
+        if not spell_check(word, dictionary):
+            err.append(word)
+    return err
+        
 if __name__ == "__main__":
     word_dict = init_dict(DICT_DATA)
-    print(word_dict)
+    tokens = string_to_tokens(EXAMPLE_STR)
+    err = spell_check_list(tokens, word_dict)
+    print(err)
+    # print(word_dict)
+    # print(tokens)
+    
