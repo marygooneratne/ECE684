@@ -20,8 +20,7 @@ import numpy as np
 
 DICT_DATA_2 = "./dict2.txt"
 DICT_DATA = "./dict.txt"
-SHORT_EXAMPLE_STR = "The family of Dashwood had long been settled i Sussex \
-        Their estete was large, and their residence was at Norlad Park,"
+SHORT_EXAMPLE_STR = "The family of Dashwood had long been settled i Sussex Their estete was large, and their residence was at Norlad Park,"
 EXAMPLE_STR = "The family of Dashwood had long been settled i Sussex \
         Their estete was large, and their residence was at Norlad Park,\
         in the centre of their property, where, for many generations,\
@@ -43,6 +42,14 @@ EXAMPLE_STR = "The family of Dashwood had long been settled i Sussex \
         but fom goodness of hveart, gave hi every degree of sorid\
         comfort which his age could receive; and the cheerfulness\
         of the children added a relitsh n his existence."
+MED_EXAMPLE_STR = "The family of Dashwood had long been settled i Sussex \
+        Their estete was large, and their residence was at Norlad Park,\
+        in the centre of their property, where, for many generations,\
+        they had lived in so respectable a manner as to engage \
+        the general good opinion of their surrounding acquaintance.\
+        The late owner of thfs estat was a single man, who lived\
+        to a very advanced age, and who for many years of hijs life,\
+        had a constant companion nd housekeeper in his sister."
 
 
 def init_dict(FILE_NAME):
@@ -53,19 +60,19 @@ def init_dict(FILE_NAME):
     return dict_set
 
 
-def string_to_tokens(input):
-#     tokens = re.findall("[A-Z]{2,}(?![a-z])|[A-Z][a-z]+(?=[A-Z])|[\'\w\-]+",input)
-    tokens = input.split(" ")
+def string_to_tokens(input_string):
+#     tokens = re.findall("[A-Z]{2,}(?![a-z])|[A-Z][a-z]+(?=[A-Z])|[\'\w\-]+",input_string)
+    tokens = input_string.split(" ")
     return tokens
 
-def spell_check_str(input, dictionary):
-    if len(input) == 0:
+def spell_check_str(input_string, dictionary):
+    if len(input_string) == 0:
         return 1
-    if re.match("[A-Z][a-z'-]*", input):
+    if re.match("[A-Z][a-z'-]*", str(input_string)):
         return 1
-    if re.match("[^\w]+", input):
+    if re.match("[\.\+\-\(\,\;\&\)\'\"\!\?]+", str(input_string)):
         return 1
-    if input not in dictionary:
+    if input_string not in dictionary:
         return 0
     else:
         return 1
@@ -96,35 +103,42 @@ def calc_dist(A, B, k=2):
             #     return 100
     return grid[x][y]
 
-def find_closest(input, dictionary):
+def find_closest(input_string, dictionary):
     match_word = dictionary.pop()
-    dist = calc_dist(input, match_word)
+    dist = calc_dist(input_string, match_word)
     for word in dictionary:
-        if abs(len(word) - len(input)) >= dist:
+        if abs(len(word) - len(input_string)) >= dist:
             continue
-        temp_dist = calc_dist(input, word)
+        temp_dist = calc_dist(input_string, word)
         if temp_dist < dist:
             match_word = word
             dist = temp_dist
         if dist == 1:
-            return (match_word, dist)
+            return match_word
 
 def sub_word(word, dictionary):
-    mod_word = word.split('\'')
+    prefix = ''
     suffix = ''
+    suffix2 = ''
+    if re.match("[\.\+\-\(\,\;\&\)\\'\\\"\!\?][\S\s]+", str(word)):
+        prefix = word[0]
+    if re.match("[\s\S]+[\.\+\-\(\,\;\&\)\'\"\!\?]", str(word)):
+        suffix2 = word[len(word)-1]
+    mod_word = word.split('\'')
     if len(mod_word) > 1:
-        suffix = mod_word[1]
+        suffix = '\'' + mod_word[1]
     mod_word = mod_word[0]
     if not spell_check_str(word, dictionary):
         closest = find_closest(word, dictionary)
-        mod_closest = closest + '\'' + suffix
-        return mod_closest
+        if closest is not None:
+            mod_closest = prefix + closest + suffix + suffix2
+            return mod_closest
     return word
 
 def correct_arr(arr, dictionary):
     for i, word in enumerate(arr):
         arr[i] = sub_word(word, dictionary)
-    return arr.join(" ")
+    return " ".join(arr)
 
 def spell_check_list(arr, dictionary):
     err = []
@@ -135,7 +149,7 @@ def spell_check_list(arr, dictionary):
         
 if __name__ == "__main__":
     word_dict = init_dict(DICT_DATA)
-    tokens = string_to_tokens(SHORT_EXAMPLE_STR)
+    tokens = string_to_tokens(MED_EXAMPLE_STR)
     err = spell_check_list(tokens, word_dict)
     print(correct_arr(tokens, word_dict))
     # subs = sub_err(tokens, word_dict)
