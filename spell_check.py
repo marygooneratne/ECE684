@@ -65,7 +65,6 @@ def calc_dist(A, B):
     ys = len(B)+1
     grid = np.zeros((xs, ys), dtype=int)
 
-    # Make the yumns
     for i in range(1, xs):
         for j in range(1, ys):
             grid[i][0] = i
@@ -74,7 +73,7 @@ def calc_dist(A, B):
     # Find cost of deletions,insertions and/or substitutions
     for x in range(1, xs):
         for y in range(1, ys):
-            if A[x-1] == B[y-1]:  # Letters on the same
+            if A[x-1] == B[y-1]:  # Letters are the same
                 cost = 0
             else:
                 cost = 1
