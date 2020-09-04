@@ -59,7 +59,6 @@ def spell_check(input, dictionary):
     else: return 1
 
 def calc_dist(A, B):
-
     # Initialize matrix
     xs = len(A)+1
     ys = len(B)+1
@@ -88,16 +87,33 @@ def spell_check_list(arr, dictionary):
         if not spell_check(word, dictionary):
             err.append(word)
     return err
+
+def find_closest(input, dictionary):
+    match_word = dictionary.pop()
+    dist = calc_dist(input, match_word)
+    for word in dictionary:
+        temp_dist = calc_dist(input, word)
+        if temp_dist < dist:
+            match_word = word
+            dist = temp_dist
+        if dist == 1:
+            return (match_word, dist)
+    return (match_word, dist)
+
+def sub_err(arr, dictionary):
+    subs = []
+    for word in arr:
+        if not spell_check(word, dictionary):
+            subs.append(find_closest(word, dictionary))
+    return subs
+        
         
 if __name__ == "__main__":
     word_dict = init_dict(DICT_DATA)
     tokens = string_to_tokens(EXAMPLE_STR)
     err = spell_check_list(tokens, word_dict)
-
-    A = 'Apple Inc.'
-    B = 'apple Inc'
-    dist = calc_dist(A.lower(), B.lower())
-    # print(dist)
+    subs = sub_err(tokens, word_dict)
+    print(subs)
     # print(err)
     # print(word_dict)
     # print(tokens)
