@@ -14,3 +14,16 @@
 # You may work in a group of 1 or 2. Submissions will be graded without
 # regard for the group size. Submit your solution in a .zip file including a
 # Jupyter notebook (.ipynb file) demonstrating its usage.
+
+DICT_DATA = "dict.txt"
+
+def init_dict(FILE_NAME):
+    f = open(FILE_NAME, "r")
+    dict_set = set()
+    for word in f:
+        dict_set.add(word.split('\n')[0])
+    return dict_set
+
+if __name__ == "__main__":
+    word_dict = init_dict(DICT_DATA)
+    print(word_dict)
