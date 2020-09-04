@@ -15,10 +15,13 @@
 # regard for the group size. Submit your solution in a .zip file including a
 # Jupyter notebook (.ipynb file) demonstrating its usage.
 import re
+
 import numpy as np
 
-DICT_DATA_2 = "dict2.txt"
-DICT_DATA = "dict.txt"
+DICT_DATA_2 = "./dict2.txt"
+DICT_DATA = "./dict.txt"
+SHORT_EXAMPLE_STR = "The family of Dashwood had long been settled i Sussex \
+        Their estete was large, and their residence was at Norlad Park,"
 EXAMPLE_STR = "The family of Dashwood had long been settled i Sussex \
         Their estete was large, and their residence was at Norlad Park,\
         in the centre of their property, where, for many generations,\
@@ -49,6 +52,7 @@ def init_dict(FILE_NAME):
         dict_set.add(word.split('\n')[0])
     return dict_set
 
+
 def string_to_tokens(input):
 #     tokens = re.findall("[A-Z]{2,}(?![a-z])|[A-Z][a-z]+(?=[A-Z])|[\'\w\-]+",input)
     tokens = input.split(" ")
@@ -63,9 +67,11 @@ def spell_check_str(input, dictionary):
         return 1
     if input not in dictionary:
         return 0
-    else: return 1
+    else:
+        return 1
 
-def calc_dist(A, B):
+
+def calc_dist(A, B, k=2):
     # Initialize matrix
     xs = len(A)+1
     ys = len(B)+1
@@ -86,12 +92,16 @@ def calc_dist(A, B):
             grid[x][y] = min(grid[x-1][y] + 1,      # Cost of deletions
                              grid[x][y-1] + 1,          # Cost of insertions
                              grid[x-1][y-1] + cost)     # Cost of substitutions
+            # if(grid[x][y] >= k):
+            #     return 100
     return grid[x][y]
 
 def find_closest(input, dictionary):
     match_word = dictionary.pop()
     dist = calc_dist(input, match_word)
     for word in dictionary:
+        if abs(len(word) - len(input)) >= dist:
+            continue
         temp_dist = calc_dist(input, word)
         if temp_dist < dist:
             match_word = word
@@ -125,7 +135,7 @@ def spell_check_list(arr, dictionary):
         
 if __name__ == "__main__":
     word_dict = init_dict(DICT_DATA)
-    tokens = string_to_tokens(EXAMPLE_STR)
+    tokens = string_to_tokens(SHORT_EXAMPLE_STR)
     err = spell_check_list(tokens, word_dict)
     print(correct_arr(tokens, word_dict))
     # subs = sub_err(tokens, word_dict)
