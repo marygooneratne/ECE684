@@ -15,7 +15,7 @@
 # regard for the group size. Submit your solution in a .zip file including a
 # Jupyter notebook (.ipynb file) demonstrating its usage.
 import re
-from comparator import compare
+from spell_check.comparator import compare
 import numpy as np
 
 DICT_DATA_2 = "./dict2.txt"
@@ -39,7 +39,7 @@ def string_to_tokens(input_string):
 def spell_check_str(input_string, dictionary):
     if len(input_string) == 0:
         return 1
-    if re.match("[A-Z][a-z'-]*", str(input_string)):
+    if re.match("[A-Z][a-z'-]+", str(input_string)):
         return 1
     if re.match("[\.\+\-\(\,\;\&\)\'\"\!\?]+", str(input_string)):
         return 1
@@ -80,13 +80,13 @@ def calc_dist_deprecated(A, B, k=2):
     return grid[x][y]
 
 
-def find_closest(input_string, dictionary):
+def find_closest(input_string, dictionary, k):
     match_word = dictionary.pop()
-    dist = calc_dist(input_string, match_word, 3)
+    dist = calc_dist(input_string, match_word, k)
     for word in dictionary:
         if abs(len(word) - len(input_string)) >= dist:
             continue
-        temp_dist = calc_dist(input_string, word, 3)
+        temp_dist = calc_dist(input_string, word, k)
         if temp_dist < dist:
             match_word = word
             dist = temp_dist
@@ -95,29 +95,42 @@ def find_closest(input_string, dictionary):
     return match_word
 
 
-def sub_word(word, dictionary):
+def sub_word(word, dictionary, k):
     prefix = ''
     suffix = ''
     suffix2 = ''
-    if re.match("[\.\+\-\(\,\;\&\)\\'\\\"\!\?][\S\s]+", str(word)):
+    title = word.istitle()
+    upper = word.isupper()
+    mod_word = word
+    if re.match("[\[\.\+\-\(\,\;\&\)\\'\\\"\!\?][\S\s]+", str(word)):
         prefix = word[0]
-    if re.match("[\s\S]+[\.\+\-\(\,\;\&\)\'\"\!\?]", str(word)):
+        mod_word = mod_word[1:]
+    if re.match("[\s\S]+[\.\+\-\(\,\;\&\)\'\"\!\?\]]", str(word)):
         suffix2 = word[len(word)-1]
-    mod_word = word.split('\'')
+        mod_word = mod_word[0:len(mod_word)-1]
+    mod_word = mod_word.split('\'')
     if len(mod_word) > 1:
         suffix = '\'' + mod_word[1]
     mod_word = mod_word[0]
-    if not spell_check_str(word, dictionary):
-        closest = find_closest(word, dictionary)
+
+    if mod_word.isdigit():
+        return word
+    mod_word = mod_word.lower()
+    if not spell_check_str(mod_word, dictionary):
+        closest = find_closest(mod_word, dictionary, k)
         if closest is not None:
             mod_closest = prefix + closest + suffix + suffix2
+            if title:
+                mod_closest = mod_closest.title()
+            if upper:
+                mod_closest = mod_closest.upper()
             return mod_closest
     return word
 
 
-def correct_arr(arr, dictionary):
+def correct_arr(arr, dictionary, k):
     for i, word in enumerate(arr):
-        arr[i] = sub_word(word, dictionary)
+        arr[i] = sub_word(word, dictionary, k)
     return " ".join(arr)
 
 
@@ -131,11 +144,11 @@ def spell_check_list(arr, dictionary):
 
 def autocorrect(word_dict, str, k=3):
     tokens = string_to_tokens(str)
-    fixed = correct_arr(tokens, word_dict)
+    fixed = correct_arr(tokens, word_dict, k)
     return fixed
 
 
-def run_test(test_file, k=3):
+def run_test(test_file, k=10):
     word_dict = init_dict(DICT_DATA)
     file = open(test_file, 'r')
     fixed_lines = []
@@ -146,9 +159,13 @@ def run_test(test_file, k=3):
     return corrected
 
 
-if __name__ == "__main__":
-    test_file = '../tests/test1.txt'
+def test():
+    test_file = '../tests/austen-short.txt'
     print(run_test(
         test_file,
-        10
+        3
     ))
+
+
+if __name__ == "__main__":
+    test()
