@@ -20,53 +20,30 @@ import numpy as np
 
 DICT_DATA_2 = "./dict2.txt"
 DICT_DATA = "./dict.txt"
-SHORT_EXAMPLE_STR = "The family of Dashwood had long been settled i Sussex \
-        Their estete was large, and their residence was at Norlad Park,"
-EXAMPLE_STR = "The family of Dashwood had long been settled i Sussex \
-        Their estete was large, and their residence was at Norlad Park,\
-        in the centre of their property, where, for many generations,\
-        they had lived in so respectable a manner as to engage \
-        the general good opinion of their surrounding acquaintance.\
-        The late owner of thfs estat was a single man, who lived\
-        to a very advanced age, and who for many years of hijs life,\
-        had a constant companion nd housekeeper in his sister.\
-        But her death, which happened ten ryears beore his own,\
-        produced a great alteration in his home; fuor gto supply\
-        her lodss, he invited and eceivepd into his house the family\
-        of his nephew Mr. Henry Dashwood, the legal inheritkr\
-        of the Norland estate, and te lperqson to wsom he intended\
-        to bequeath it.  In the society o his nephew and niece,\
-        and theoir childrn, the old Gentaeman's das were\
-        comfortably spent.  His attacsment to them all increased.\
-        The consmant attention of Mr. and Mrs. Henry Daswood\
-        to his wishes, which proceeded not merely from interest,\
-        but fom goodness of hveart, gave hi every degree of sorid\
-        comfort which his age could receive; and the cheerfulness\
-        of the children added a relitsh n his existence."
 
 
-def init_dict(FILE_NAME):
-    f = open(FILE_NAME, "r")
+def init_dict(DICT_FILE):
+    f = open(DICT_FILE, "r")
     dict_set = set()
     for word in f:
         dict_set.add(word.split('\n')[0])
     return dict_set
 
 
-def string_to_tokens(input):
-    #     tokens = re.findall("[A-Z]{2,}(?![a-z])|[A-Z][a-z]+(?=[A-Z])|[\'\w\-]+",input)
-    tokens = input.split(" ")
+def string_to_tokens(input_string):
+    #     tokens = re.findall("[A-Z]{2,}(?![a-z])|[A-Z][a-z]+(?=[A-Z])|[\'\w\-]+",input_string)
+    tokens = input_string.split(" ")
     return tokens
 
 
-def spell_check_str(input, dictionary):
-    if len(input) == 0:
+def spell_check_str(input_string, dictionary):
+    if len(input_string) == 0:
         return 1
-    if re.match("[A-Z][a-z'-]*", input):
+    if re.match("[A-Z][a-z'-]*", str(input_string)):
         return 1
-    if re.match("[^\w]+", input):
+    if re.match("[\.\+\-\(\,\;\&\)\'\"\!\?]+", str(input_string)):
         return 1
-    if input not in dictionary:
+    if input_string not in dictionary:
         return 0
     else:
         return 1
@@ -103,13 +80,13 @@ def calc_dist_deprecated(A, B, k=2):
     return grid[x][y]
 
 
-def find_closest(input, dictionary):
+def find_closest(input_string, dictionary):
     match_word = dictionary.pop()
-    dist = calc_dist(input, match_word, 3)
+    dist = calc_dist(input_string, match_word, 3)
     for word in dictionary:
-        if abs(len(word) - len(input)) >= dist:
+        if abs(len(word) - len(input_string)) >= dist:
             continue
-        temp_dist = calc_dist(input, word, 3)
+        temp_dist = calc_dist(input_string, word, 3)
         if temp_dist < dist:
             match_word = word
             dist = temp_dist
@@ -119,15 +96,22 @@ def find_closest(input, dictionary):
 
 
 def sub_word(word, dictionary):
-    mod_word = word.split('\'')
+    prefix = ''
     suffix = ''
+    suffix2 = ''
+    if re.match("[\.\+\-\(\,\;\&\)\\'\\\"\!\?][\S\s]+", str(word)):
+        prefix = word[0]
+    if re.match("[\s\S]+[\.\+\-\(\,\;\&\)\'\"\!\?]", str(word)):
+        suffix2 = word[len(word)-1]
+    mod_word = word.split('\'')
     if len(mod_word) > 1:
-        suffix = mod_word[1]
+        suffix = '\'' + mod_word[1]
     mod_word = mod_word[0]
     if not spell_check_str(word, dictionary):
         closest = find_closest(word, dictionary)
-        mod_closest = closest + '\'' + suffix
-        return mod_closest
+        if closest is not None:
+            mod_closest = prefix + closest + suffix + suffix2
+            return mod_closest
     return word
 
 
@@ -145,14 +129,26 @@ def spell_check_list(arr, dictionary):
     return err
 
 
-if __name__ == "__main__":
+def autocorrect(word_dict, str, k=3):
+    tokens = string_to_tokens(str)
+    fixed = correct_arr(tokens, word_dict)
+    return fixed
+
+
+def run_test(test_file, k=3):
     word_dict = init_dict(DICT_DATA)
-    tokens = string_to_tokens(EXAMPLE_STR)
-    err = spell_check_list(tokens, word_dict)
-    print(correct_arr(tokens, word_dict))
-    # subs = sub_err(tokens, word_dict)
-    # print(subs)
-    # print(err)
-    # print(word_dict)
-    # print(tokens)
-    # print(word_dict)
+    file = open(test_file, 'r')
+    fixed_lines = []
+    for line in file:
+        fixed_lines.append(autocorrect(word_dict, line.split('\n')[0], k))
+
+    corrected = '\n'.join(fixed_lines)
+    return corrected
+
+
+if __name__ == "__main__":
+    test_file = '../tests/test1.txt'
+    print(run_test(
+        test_file,
+        10
+    ))
