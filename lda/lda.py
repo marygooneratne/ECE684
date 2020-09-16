@@ -1,7 +1,7 @@
 import numpy as np
 from gensim.corpora.dictionary import Dictionary
 from gensim.models.ldamodel import LdaModel as ldamodel
-
+from gensim.models.ldamodel import LdaState as ldastate
 def lda(vocabulary, beta, alpha, xi):
     '''
     Args:
@@ -30,9 +30,15 @@ def corpus(vocabulary, beta, alpha, xi, num_docs):
 def train_LDA(texts):
     common_dictionary = Dictionary(texts)
     common_corpus = [common_dictionary.doc2bow(text) for text in texts]
-    lda = ldamodel(common_corpus, num_topics=3)
-    print(lda.alpha)
-    print(lda.eta)
+    lda = ldamodel(common_corpus, alpha='auto', eta='auto')
+    alpha= lda.alpha
+    eta = lda.eta
+    theta = np.random.dirichlet(lda.alpha, 50)
+    beta = np.random.dirichlet(lda.eta, 3)
+    print("ALPHA: ", alpha)
+    print("THETA: ", theta)
+    print("ETA: ", eta)
+    print("BETA: ", beta)
 
 if __name__ == "__main__":
     vocabulary = ['bass', 'pike', 'deep', 'tuba', 'horn', 'catapult']
@@ -43,7 +49,7 @@ if __name__ == "__main__":
     ])
     alpha = np.array([1, 3, 8])
     xi = 50
-    num_docs = 100
+    num_docs = 10000
     gen = lda(vocabulary, beta, alpha, xi)
     corpus = corpus(vocabulary, beta, alpha, xi, num_docs)
     train_LDA(corpus)
