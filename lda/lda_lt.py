@@ -8,7 +8,7 @@ def get_trial_result(sample):
 
 
 def lda(vocabulary, beta, alpha, xi):
-    # for v in vocabulary:
+
     N = np.random.poisson(xi)
 
     theta = np.random.dirichlet(alpha, N)
@@ -21,14 +21,3 @@ def lda(vocabulary, beta, alpha, xi):
 
     return w
 
-
-vocabulary = ['bass', 'pike', 'deep', 'tuba', 'horn', 'catapult']
-beta = np.array([
-    [0.4, 0.4, 0.2, 0.0, 0.0, 0.0],
-    [0.0, 0.3, 0.1, 0.0, 0.3, 0.3],
-    [0.3, 0.0, 0.2, 0.3, 0.2, 0.0]
-])
-alpha = np.array([1, 3, 8])
-xi = 50
-
-print(lda(vocabulary, beta, alpha, xi))
