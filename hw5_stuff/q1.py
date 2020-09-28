@@ -142,9 +142,11 @@ def viterbi(obs, pi, a, b):
 
 
 pi = transition_matrix[0]
+print(sum(pi))
 a = transition_matrix
+print(a[0:3])
 b = observation_matrix
-
+print(b[0:3])
 # states = viterbi([], pi, a, b)[0]
 # final = []
 # for state in states:
