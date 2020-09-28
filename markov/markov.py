@@ -1,20 +1,23 @@
 import re
 import nltk
 import numpy as np
+import os
 
-TRUMP_SPEECH = "data/speeches.txt"
-OBAMA = 'data/pres/obama/obama_speeches_'
+TRUMP_SPEECH = r"\data\speeches.txt"
+OBAMA = r'\data\pres\obama\obama_speeches_'
+
 
 def model_gen(n, tokens):
 
-    n_grams = [[tokens[i] for i in range(j, j+n)] for j in range (0, len(tokens)-n)]
+    n_grams = [[tokens[i] for i in range(j, j+n)]
+               for j in range(0, len(tokens)-n)]
     _dict = {}
     # Build n-gram table
     for idx in range(0, len(n_grams)):
         key = tuple(n_grams[idx][0:len(n_grams[idx])-1])
         val = n_grams[idx][len(n_grams[idx])-1]
         if key not in _dict.keys():
-            _dict[key] = {'tokens':[], 'P':[]}
+            _dict[key] = {'tokens': [], 'P': []}
         if val not in _dict[key]['tokens']:
             _dict[key]['tokens'].append(val)
             _dict[key]['P'].append(0)
@@ -28,6 +31,8 @@ def model_gen(n, tokens):
     return _dict
 
 # Stochastic selection
+
+
 def non_det(loc):
     P = loc['P']
     next_arr = loc['tokens']
@@ -35,6 +40,8 @@ def non_det(loc):
     return next
 
 # Deterministic selection
+
+
 def det(loc):
     P = loc['P']
     next_arr = loc['tokens']
@@ -60,27 +67,31 @@ def finish_sentence(sentence, n, corpus, deterministic=False):
             an extended sentence until the first ., ?, or ! is found OR until it has 15 total tokens.
     '''
     # Init full gram model for grams 0 to n
-    model = { i: model_gen(i, corpus) for i in range(2, n+1)}
+    model = {i: model_gen(i, corpus) for i in range(2, n+1)}
+    print(corpus)
     full = sentence
-    
+    print(model)
+
     # Iteratively append words
-    while(full[len(full)-1] not in ['.', '?', '!'] and len(full) < 800):
+    while(full[len(full)-1] not in ['.', '?', '!'] and len(full) < 16):
         # Use last n-1 words for look-up
         key = full[len(full)-n+1:]
         key = tuple(key)
-        
+
         # Search in first available dictionary
         N = n
+
         _dict = model[N]
         while key not in _dict.keys() and N > 2:
             N -= 1
             _dict = model[N]
-        
+
         loc = _dict[key]
         next = det(loc) if deterministic else non_det(loc)
         full.append(next)
-    
+
     return full
+
 
 def finish_sentence(sentence, n, corpus, deterministic=False, length=15):
     '''
@@ -93,32 +104,36 @@ def finish_sentence(sentence, n, corpus, deterministic=False, length=15):
             an extended sentence until the first ., ?, or ! is found OR until it has 15 total tokens.
     '''
     # Init full gram model for grams 0 to n
-    model = { i: model_gen(i, corpus) for i in range(2, n+1)}
+    model = {i: model_gen(i, corpus) for i in range(2, n+1)}
     full = sentence
-    
+    print(corpus)
+    print(model)
+
     # Iteratively append words
     while(full[len(full)-1] not in ['.', '?', '!'] and len(full) < length):
         # Use last n-1 words for look-up
         key = full[len(full)-n+1:]
         key = tuple(key)
-        
+
         # Search in first available dictionary
         N = n
         _dict = model[N]
         while key not in _dict.keys() and N > 2:
             N -= 1
             _dict = model[N]
-        
+        print(_dict)
         loc = _dict[key]
         next = det(loc) if deterministic else non_det(loc)
         full.append(next)
-    
+
     return full
+
 
 def get_corpus(file_name):
     words = []
     try:
-        with open(file_name,'r') as f:
+
+        with open(file_name, 'r') as f:
             for line in f:
                 for word in line.split():
                     words.append(word.lower())
@@ -127,10 +142,13 @@ def get_corpus(file_name):
     except:
         return words
 
+
 def get_speeches(file_prefix, len):
     words = []
     for i in range(0, len):
-        file_name = file_prefix + str(i).zfill(3) + '.txt'
+
+        path = os.getcwd()
+        file_name = path + file_prefix + str(i).zfill(3) + '.txt'
         words = words + get_corpus(file_name)
     return words
 
