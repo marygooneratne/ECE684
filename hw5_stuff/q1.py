@@ -93,8 +93,8 @@ for key, value in transition_prob.items():
     transition_matrix[i, j] = value
 # print(transition_matrix)
 
-observation_matrix = np.zeros((len(tag_map), len(word_map)))
-print('Emission Model\n')
+observation_matrix = np.zeros((len(tag_map), len(word_map)+1))
+
 for key, value in emission_prob_dict.items():
     i = tag_map[key[1]]
     j = word_map[key[0].lower()]
@@ -106,12 +106,10 @@ for tag in tag_map.keys():
     j = word_map['undefined']
 
     observation_matrix[i][j] = random_model
-print(observation_matrix)
-print(observation_matrix.shape)
 
 
 def viterbi(obs, pi, a, b):
-
+    print(obs)
     # obs.append(0)
     # obs_plain = []
     # for word in tagset[0]:
@@ -144,16 +142,18 @@ def viterbi(obs, pi, a, b):
 
 
 pi = transition_matrix[0]
+print(sum(pi))
 a = transition_matrix
+print(a[0:3])
 b = observation_matrix
-
-states = viterbi([], pi, a, b)[0]
-final = []
-for state in states:
-    for tag in tag_map.keys():
-        if tag_map[tag] == state:
-            final.append(tag)
-print(final[1:])
+print(b[0:3])
+# states = viterbi([], pi, a, b)[0]
+# final = []
+# for state in states:
+#     for tag in tag_map.keys():
+#         if tag_map[tag] == state:
+#             final.append(tag)
+# print(final[1:])
 
 
 def build_sentence(sentence):
@@ -163,15 +163,25 @@ def build_sentence(sentence):
         try:
             idx = word_map[word]
         except:
-            idx = word_map[undefined]
+            idx = word_map['undefined']
         idx_sentence.append(idx)
+    return idx_sentence
+
+
+def dec_sentence(states):
+    final = []
+    for state in states:
+        for tag in tag_map.keys():
+            if tag_map[tag] == state:
+                final.append(tag)
+    return final[1:]
 
 
 test = nltk.corpus.brown.tagged_sents(tagset='universal')[10150:10153]
-
+print(test)
 for t in test:
     print(t)
     idx_sentence = build_sentence(t)
     vt = viterbi(idx_sentence, pi, a, b)
-    print(vt)
+    print(dec_sentence(vt))
     print()
