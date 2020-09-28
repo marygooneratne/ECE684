@@ -16,6 +16,7 @@ trans_dict = {}
 trans_matrix = []
 word_map = {}
 tag_map = {}
+corpus = nltk.corpus.brown.tagged_sents(tagset='universal')[:10000]
 
 def gen_mappings():
     global tag_map
@@ -116,9 +117,62 @@ def gen_observation_matrix():
 def gen_initial_distribution():
     return None
 
+def viterbi(pi, a, b):
+    global corpus
+    obs = []
+    obs.append(0)
+    for word in corpus[0]:
+        obs.append(word_map[word[0]])
+    
+    print(obs)
+    nStates = np.shape(b)[0]
+    T = np.shape(obs)[0]
+    
+    # init blank path
+    path = path = np.zeros(T,dtype=int)
+    # delta --> highest probability of any path that reaches state i
+    delta = np.zeros((nStates, T))
+    # phi --> argmax by time step for each state
+    phi = np.zeros((nStates, T))
+    
+    # init delta and phi 
+    delta[:, 0] = pi * b[:, obs[0]]
+    phi[:, 0] = 0
+
+    print('\nStart Walk Forward\n')    
+    # the forward algorithm extension
+    for t in range(1, T):
+        for s in range(nStates):
+            delta[s, t] = np.max(delta[:, t-1] * a[:, s]) * b[s, obs[t]] 
+            phi[s, t] = np.argmax(delta[:, t-1] * a[:, s])
+            print('s={s} and t={t}: phi[{s}, {t}] = {phi}'.format(s=s, t=t, phi=phi[s, t]))
+    
+    # find optimal path
+    print('-'*50)
+    print('Start Backtrace\n')
+    path[T-1] = np.argmax(delta[:, T-1])
+    for t in range(T-2, -1, -1):
+        path[t] = phi[path[t+1], [t+1]]
+        print('path[{}] = {}'.format(t, path[t]))
+        
+    return path, delta, phi
+
+# def viterbi(obs, pi, A, B):
+#     '''
+#         Implement a function viterbi() that takes arguments:
+#         1. obs - the observations [list of ints]
+#         2. pi - the initial state probabilities [list of floats]
+#         3. A - the state transition probability matrix [2D numpy array]
+#         4. B - the observation probability matrix [2D numpy array]
+#         and returns:
+#         1. states - the inferred state sequence [list of ints]
+#     '''
+
+
 if __name__ == '__main__':
     corpus = nltk.corpus.brown.tagged_sents(tagset='universal')[:10000]
     gen_counts(corpus)
     gen_mappings()
-    print(gen_transition_matrix())
-    print(gen_observation_matrix())
+    trans = gen_transition_matrix()
+    obs = gen_observation_matrix()
+    print(viterbi(trans[0], trans, obs))
