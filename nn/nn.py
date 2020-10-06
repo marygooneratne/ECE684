@@ -103,13 +103,6 @@ run it forward using the PyTorch-trained weights.
 '''
 
 
-# X, Y = gen_xor.gen_xor()
-
-# # scale units
-# X = X/np.amax(X, axis=0)
-# Y = Y/np.amax(Y, axis=0)
-
-
 class neural_network(object):
     def __init__(self, input_size=2, output_size=1, hidden_size=3, W1=None, W2=None):
         # parameters
