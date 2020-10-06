@@ -16,21 +16,19 @@ import matplotlib.pyplot as plt
 
 torch.manual_seed(2)
 
-X, Y = gen_xor.gen_xor()
-
 
 class XOR(nn.Module):
     def __init__(self, input_dim=2, output_dim=1):
         super(XOR, self).__init__()
-        self.lin1 = nn.Linear(input_dim, 2)
-        self.lin2 = nn.Linear(2, output_dim)
+        self.lin1 = nn.Linear(input_dim, 3)
+        self.lin2 = nn.Linear(3, output_dim)
         self.weights_init()
 
     def forward(self, x):
         x = self.lin1(x)
-        x = F.sigmoid(x)
+        x = torch.tanh(x)
         x = self.lin2(x)
-        x = F.sigmoid(x)
+        x = torch.tanh(x)
         return x
 
     def weights_init(self):
@@ -39,9 +37,13 @@ class XOR(nn.Module):
                 # initialize the weight tensor, here we use a normal distribution
                 m.weight.data.normal_(0, 1)
 
-    def train(self, X, Y, epochs=2001):
+    def train(self, X, Y, epochs=2000):
+
+        X = torch.Tensor(X)
+        Y = torch.Tensor(Y)
+
         loss_func = nn.MSELoss()
-        optimizer = optim.SGD(self.parameters(), lr=0.02, momentum=0.9)
+        optimizer = optim.SGD(self.parameters(), lr=0.02)
 
         steps = X.size(0)
         for i in range(epochs):
@@ -55,32 +57,42 @@ class XOR(nn.Module):
                 loss.backward()
                 optimizer.step()
 
-            if i % 500 == 0:
+            if i % 50 == 0:
                 print("Epoch: {0}, Loss: {1}, ".format(
                     i, loss.data.numpy()))
         model_params = list(self.parameters())
         model_weights = model_params[0].data.numpy()
         model_bias = model_params[1].data.numpy()
-        plt.scatter(X[:, 0], X[:, 1], s=50)
-        plt.scatter(X[:, 0], X[:, 1], c='red', s=50)
-
-        x_1 = np.arange(-0.1, 1.1, 0.1)
-        y_1 = ((x_1 * model_weights[0, 0]) +
-               model_bias[0]) / (-model_weights[0, 1])
-        plt.plot(x_1, y_1)
-
-        x_2 = np.arange(-0.1, 1.1, 0.1)
-        y_2 = ((x_2 * model_weights[1, 0]) +
-               model_bias[1]) / (-model_weights[1, 1])
-        plt.plot(x_2, y_2)
-        plt.legend(["neuron_1", "neuron_2"], loc=8)
-        plt.show()
 
 
-X = torch.Tensor(X)
-Y = torch.Tensor(Y)
-net = XOR(2, 1)
-net.train(X, Y)
+def plot_boundary_in_original_space(X, Y, model):
+    X = torch.Tensor(X)
+    Y = torch.Tensor(Y)
+    grid_density = 100
+    x1 = np.linspace(X[:, 0].min()-1, X[:, 0].max()+1, grid_density)
+    x2 = np.linspace(X[:, 1].min()-1, X[:, 1].max()+1, grid_density)
+    mash = np.meshgrid(x1, x2)
+
+    data_tmp = np.ndarray((grid_density**2, 2))
+    data_tmp[:, 0] = mash[0].flatten()
+    data_tmp[:, 1] = mash[1].flatten()
+    data_tmp_tensor = torch.tensor(data_tmp, dtype=torch.float32)
+
+    preds = model(data_tmp_tensor).detach().numpy()
+    print(preds.flatten())
+    c0 = data_tmp[preds.flatten() < 0.5]
+    c1 = data_tmp[preds.flatten() >= 0.5]
+    plt.scatter(c0[:, 0], c0[:, 1], alpha=1.0, marker='s', color="#aaccee")
+    plt.scatter(c1[:, 0], c1[:, 1], alpha=1.0, marker='s', color="#eeccaa")
+    for y in Y.unique():
+        if y == 0:
+            plt.scatter(X[Y == y, 0], X[Y == y, 1], s=50)
+        else:
+            plt.scatter(X[Y == y, 0], X[Y == y, 1], c='red', s=50)
+    plt.title('Data and boundary in original space')
+    plt.show()
+
+
 '''
 Q2
 Implement a feed-forward neural network function from scratch. Extract the
@@ -99,7 +111,7 @@ run it forward using the PyTorch-trained weights.
 
 
 class neural_network(object):
-    def __init__(self, input_size=2, output_size=1, hidden_size=2, W1=None, W2=None):
+    def __init__(self, input_size=2, output_size=1, hidden_size=3, W1=None, W2=None):
         # parameters
         self.input_size = input_size
         self.output_size = output_size
@@ -108,9 +120,9 @@ class neural_network(object):
         # weights
         if not W1.any() or not W2.any():
             print("NONE")
-            # (2x2) weight matrix from input to hidden layer
+            # (3x2) weight matrix from input to hidden layer
             self.W1 = np.random.randn(self.input_size, self.hidden_size)
-            # (2x1) weight matrix from hidden to output layer
+            # (3x1) weight matrix from hidden to output layer
             self.W2 = np.random.randn(self.hidden_size, self.output_size)
         else:
             self.W1 = W1
@@ -118,27 +130,17 @@ class neural_network(object):
 
     def forward(self, X):
         # forward propagation through our network
-        # dot product of X (input) and first set of 2x2 weights
+        # dot product of X (input) and first set of 3x2 weights
         self.z = np.dot(X, self.W1)
-        print(self.z)
-        self.z2 = self.sigmoid(self.z)  # activation function
-        print(self.z2)
-        # dot product of hidden layer (z2) and second set of 2x1 weights
+
+        self.z2 = self.tanh(self.z)  # activation function
+
+        # dot product of hidden layer (z2) and second set of 3x1 weights
         self.z3 = np.dot(self.z2, self.W2)
-        print(self.z3)
-        o = self.sigmoid(self.z3)  # final activation function
+
+        o = self.tanh(self.z3)  # final activation function
         return o
 
-    def sigmoid(self, s):
+    def tanh(self, s):
         # activation function
-        return 1/(1+np.exp(-s))
-
-
-# nn = neural_network(W1=np.array(
-#     [[0.5, 0.5], [0.5, 0.5]]), W2=np.array([0.5, 0.5]))
-
-# X = np.ones((2,))
-# # defining our output
-# o = nn.forward(X)
-
-# print(o)
+        return (np.exp(s)-np.exp(-s))/(np.exp(s)+np.exp(-s))
