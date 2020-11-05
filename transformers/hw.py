@@ -14,11 +14,11 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 BATCH_SIZE = 128
 
 
-def process_data():
-    file = open('transformers/data/words.txt', 'r')
-    english_data = file.read().split("\n")
-    f2 = open('transformers/data/pig_latin.txt', 'r')
-    piglatin_data = f2.read().split("\n")
+def process_data(count=-1):
+    file = open('./data/words_short.txt', 'r')
+    english_data = file.read().split("\n")[0:count]
+    f2 = open('./data/pig_latin_short.txt', 'r')
+    piglatin_data = f2.read().split("\n")[0:count]
 
     alphabet = list(string.ascii_lowercase)
     alphadict = {}
@@ -38,7 +38,7 @@ def process_data():
     for i, word in enumerate(english_data):
         english.append(to_vector(word, alphadict, max_length))
         pig_latin.append(to_vector(pl, alphadict, max_length_pl))
-
+    print('Processed')
     return english, pig_latin
 
 
@@ -58,9 +58,9 @@ def one_hot(index):
     return vec
 
 
-def load_data(train_split=0.7, val_split=0.2):
+def load_data(count=-1, train_split=0.7, val_split=0.2):
     random.seed(1)
-    english, pig_latin = process_data()
+    english, pig_latin = process_data(count)
     total = len(english)
     train_size = int(train_split * total)
     val_size = int((train_split+val_split) * total)
@@ -77,332 +77,112 @@ def load_data(train_split=0.7, val_split=0.2):
     X_test = english[val_size:]
     Y_test = pig_latin[val_size:]
 
-    return X_train, X_test, X_val, Y_train, Y_val, Y_test
+    return torch.as_tensor(X_train), torch.as_tensor(X_test), torch.as_tensor(X_val), torch.as_tensor(Y_train), torch.as_tensor(Y_val), torch.as_tensor(Y_test)
 
 
 class Encoder(nn.Module):
     def __init__(self,
-                 input_dim: int,
-                 emb_dim: int,
-                 enc_hid_dim: int,
-                 dec_hid_dim: int,
-                 dropout: float):
-        super().__init__()
+                 input_dim,
+                 emb_dim,
+                 hidden_dim,
+                 num_layers,
+                 dropout):
+        super(Encoder, self).__init__()
 
         self.input_dim = input_dim
         self.emb_dim = emb_dim
-        self.enc_hid_dim = enc_hid_dim
-        self.dec_hid_dim = dec_hid_dim
-        self.dropout = dropout
-
+        self.hidden_dim = hidden_dim
+        self.dropout = nn.Dropout(dropout)
+        self.num_layers = num_layers
         self.embedding = nn.Embedding(input_dim, emb_dim)
 
-        self.rnn = nn.GRU(emb_dim, enc_hid_dim, bidirectional=True)
+        self.rnn = nn.LSTM(emb_dim, hidden_dim,
+                           bidirectional=True, dropout=dropout)
 
-        self.fc = nn.Linear(enc_hid_dim * 2, dec_hid_dim)
+    def forward(self, x):
 
-        self.dropout = nn.Dropout(dropout)
+        embedded = self.dropout(self.embedding(x))
 
-    def forward(self,
-                src: Tensor) -> Tuple[Tensor]:
+        outputs, (hidden, cell) = self.rnn(embedded)
 
-        embedded = self.dropout(self.embedding(src))
-
-        outputs, hidden = self.rnn(embedded)
-
-        hidden = torch.tanh(
-            self.fc(torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1)))
-
-        return outputs, hidden
-
-
-class Attention(nn.Module):
-    def __init__(self,
-                 enc_hid_dim: int,
-                 dec_hid_dim: int,
-                 attn_dim: int):
-        super().__init__()
-
-        self.enc_hid_dim = enc_hid_dim
-        self.dec_hid_dim = dec_hid_dim
-
-        self.attn_in = (enc_hid_dim * 2) + dec_hid_dim
-
-        self.attn = nn.Linear(self.attn_in, attn_dim)
-
-    def forward(self,
-                decoder_hidden: Tensor,
-                encoder_outputs: Tensor) -> Tensor:
-
-        src_len = encoder_outputs.shape[0]
-
-        repeated_decoder_hidden = decoder_hidden.unsqueeze(
-            1).repeat(1, src_len, 1)
-
-        encoder_outputs = encoder_outputs.permute(1, 0, 2)
-
-        energy = torch.tanh(self.attn(torch.cat((
-            repeated_decoder_hidden,
-            encoder_outputs),
-            dim=2)))
-
-        attention = torch.sum(energy, dim=2)
-
-        return F.softmax(attention, dim=1)
+        return hidden, cell
 
 
 class Decoder(nn.Module):
     def __init__(self,
-                 output_dim: int,
-                 emb_dim: int,
-                 enc_hid_dim: int,
-                 dec_hid_dim: int,
-                 dropout: int,
-                 attention: nn.Module):
-        super().__init__()
+                 output_dim,
+                 emb_dim,
+                 hidden_dim,
+                 num_layers,
+                 dropout
+                 ):
+        super(Decoder, self).__init__()
 
         self.emb_dim = emb_dim
-        self.enc_hid_dim = enc_hid_dim
-        self.dec_hid_dim = dec_hid_dim
+        self.hidden_dim = hidden_dim
         self.output_dim = output_dim
         self.dropout = dropout
-        self.attention = attention
-
+        self.num_layers = num_layers
         self.embedding = nn.Embedding(output_dim, emb_dim)
 
-        self.rnn = nn.GRU((enc_hid_dim * 2) + emb_dim, dec_hid_dim)
-
-        self.out = nn.Linear(self.attention.attn_in + emb_dim, output_dim)
-
         self.dropout = nn.Dropout(dropout)
+        self.rnn = nn.LSTM(emb_dim, hidden_dim, num_layers, dropout=dropout)
 
-    def _weighted_encoder_rep(self,
-                              decoder_hidden: Tensor,
-                              encoder_outputs: Tensor) -> Tensor:
-
-        a = self.attention(decoder_hidden, encoder_outputs)
-
-        a = a.unsqueeze(1)
-
-        encoder_outputs = encoder_outputs.permute(1, 0, 2)
-
-        weighted_encoder_rep = torch.bmm(a, encoder_outputs)
-
-        weighted_encoder_rep = weighted_encoder_rep.permute(1, 0, 2)
-
-        return weighted_encoder_rep
+        self.fc = nn.Linear(hidden_dim, output_dim)
 
     def forward(self,
-                input: Tensor,
-                decoder_hidden: Tensor,
-                encoder_outputs: Tensor) -> Tuple[Tensor]:
+                x,
+                hidden,
+                cell):
 
-        input = input.unsqueeze(0)
+        x = x.unsqueeze(0)
 
-        embedded = self.dropout(self.embedding(input))
+        embedded = self.dropout(self.embedding(x))
 
-        weighted_encoder_rep = self._weighted_encoder_rep(decoder_hidden,
-                                                          encoder_outputs)
+        outputs, (hidden, cell) = self.rnn(
+            embedded, (hidden, cell))
 
-        rnn_input = torch.cat((embedded, weighted_encoder_rep), dim=2)
+        predictions = self.fc(outputs)
 
-        output, decoder_hidden = self.rnn(
-            rnn_input, decoder_hidden.unsqueeze(0))
+        predictions = predictions.squeeze(0)
 
-        embedded = embedded.squeeze(0)
-        output = output.squeeze(0)
-        weighted_encoder_rep = weighted_encoder_rep.squeeze(0)
-
-        output = self.out(torch.cat((output,
-                                     weighted_encoder_rep,
-                                     embedded), dim=1))
-
-        return output, decoder_hidden.squeeze(0)
+        return predictions, hidden, cell
 
 
 class Seq2Seq(nn.Module):
     def __init__(self,
-                 encoder: nn.Module,
-                 decoder: nn.Module,
-                 device: torch.device):
-        super().__init__()
+                 encoder,
+                 decoder):
+        super(Seq2Seq, self).__init__()
 
         self.encoder = encoder
         self.decoder = decoder
-        self.device = device
 
     def forward(self,
-                src: Tensor,
-                trg: Tensor,
-                teacher_forcing_ratio: float = 0.5) -> Tensor:
+                src,
+                trg,
+                teacher_forcing_ratio=0.5):
 
         batch_size = src.shape[1]
         max_len = trg.shape[0]
+
         trg_vocab_size = self.decoder.output_dim
 
         outputs = torch.zeros(max_len, batch_size,
-                              trg_vocab_size).to(self.device)
+                              trg_vocab_size).to(device)
 
-        encoder_outputs, hidden = self.encoder(src)
+        hidden, cell = self.encoder(src)
 
-        # first input to the decoder is the <sos> token
-        output = trg[0, :]
+        x = trg[0]
 
         for t in range(1, max_len):
-            output, hidden = self.decoder(output, hidden, encoder_outputs)
+
+            output, hidden, cell = self.decoder(x, hidden, cell)
+
             outputs[t] = output
-            teacher_force = random.random() < teacher_forcing_ratio
-            top1 = output.max(1)[1]
-            output = (trg[t] if teacher_force else top1)
+            guess = output.argmax(1)
+
+            x = trg[t] if random.random(
+            ) < teacher_forcing_ratio else guess
 
         return outputs
-
-
-def init_weights(m: nn.Module):
-    for name, param in m.named_parameters():
-        if 'weight' in name:
-            nn.init.normal_(param.data, mean=0, std=0.01)
-        else:
-            nn.init.constant_(param.data, 0)
-
-
-def train(model: nn.Module,
-          X: list,
-          Y: list,
-          optimizer: optim.Optimizer,
-          criterion: nn.Module,
-          clip: float):
-
-    model.train()
-
-    epoch_loss = 0
-
-    for i, batch in enumerate(X):
-
-        src = X[i]
-        trg = Y[i]
-
-        optimizer.zero_grad()
-
-        output = model(src, trg)
-
-        output = output[1:].view(-1, output.shape[-1])
-        trg = trg[1:].view(-1)
-
-        loss = criterion(output, trg)
-
-        loss.backward()
-
-        torch.nn.utils.clip_grad_norm_(model.parameters(), clip)
-
-        optimizer.step()
-
-        epoch_loss += loss.item()
-
-    return epoch_loss / len(X)
-
-
-def evaluate(model: nn.Module,
-             X: list,
-             Y: list,
-             criterion: nn.Module):
-
-    model.eval()
-
-    epoch_loss = 0
-
-    with torch.no_grad():
-
-        for i, batch in enumerate(X):
-
-            src = X[i]
-            trg = Y[i]
-
-            output = model(src, trg, 0)  # turn off teacher forcing
-
-            output = output[1:].view(-1, output.shape[-1])
-            trg = trg[1:].view(-1)
-
-            loss = criterion(output, trg)
-
-            epoch_loss += loss.item()
-
-    return epoch_loss / len(X)
-
-
-def epoch_time(start_time: int,
-               end_time: int):
-    elapsed_time = end_time - start_time
-    elapsed_mins = int(elapsed_time / 60)
-    elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
-    return elapsed_mins, elapsed_secs
-
-
-def run():
-    X_train, X_test, X_val, Y_train, Y_val, Y_test = load_data()
-
-    INPUT_DIM = len(X_train[0][0])
-    OUTPUT_DIM = len(Y_train[0][0])
-    # ENC_EMB_DIM = 256
-    # DEC_EMB_DIM = 256
-    # ENC_HID_DIM = 512
-    # DEC_HID_DIM = 512
-    # ATTN_DIM = 64
-    # ENC_DROPOUT = 0.5
-    # DEC_DROPOUT = 0.5
-
-    ENC_EMB_DIM = 32
-    DEC_EMB_DIM = 32
-    ENC_HID_DIM = 64
-    DEC_HID_DIM = 64
-    ATTN_DIM = 8
-    ENC_DROPOUT = 0.5
-    DEC_DROPOUT = 0.5
-
-    enc = Encoder(INPUT_DIM, ENC_EMB_DIM, ENC_HID_DIM,
-                  DEC_HID_DIM, ENC_DROPOUT)
-
-    attn = Attention(ENC_HID_DIM, DEC_HID_DIM, ATTN_DIM)
-
-    dec = Decoder(OUTPUT_DIM, DEC_EMB_DIM, ENC_HID_DIM,
-                  DEC_HID_DIM, DEC_DROPOUT, attn)
-
-    model = Seq2Seq(enc, dec, device).to(device)
-
-    model.apply(init_weights)
-
-    optimizer = optim.Adam(model.parameters())
-
-    PAD_IDX = 0
-
-    criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
-
-    N_EPOCHS = 10
-    CLIP = 1
-
-    best_valid_loss = float('inf')
-
-    for epoch in range(N_EPOCHS):
-
-        start_time = time.time()
-
-        train_loss = train(model, X_train, Y_train, optimizer, criterion, CLIP)
-        valid_loss = evaluate(model, X_val, Y_val, criterion)
-
-        end_time = time.time()
-
-        epoch_mins, epoch_secs = epoch_time(start_time, end_time)
-
-        print(f'Epoch: {epoch+1:02} | Time: {epoch_mins}m {epoch_secs}s')
-        print(
-            f'\tTrain Loss: {train_loss:.3f} | Train PPL: {math.exp(train_loss):7.3f}')
-        print(
-            f'\t Val. Loss: {valid_loss:.3f} |  Val. PPL: {math.exp(valid_loss):7.3f}')
-
-    test_loss = evaluate(model, X_test, Y_test, criterion)
-
-    print(
-        f'| Test Loss: {test_loss:.3f} | Test PPL: {math.exp(test_loss):7.3f} |')
-
-
-run()
