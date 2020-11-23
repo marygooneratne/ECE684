@@ -24,6 +24,7 @@ for index, char in enumerate(CHARS):
 
 LEN_CHARS = len(CHARS)
 
+
 def process_char(char):
     char = char.lower()
     if char.isnumeric():
@@ -62,15 +63,24 @@ def gen_trans_matrix(text):
     return trans_matrix
 
 def log_likelihood(matrix, text):
+    text = process_text(text)
     len_text = len(text)
     log_likelihood = np.zeros(0)
     for i in range(0, len_text-1):
         curr_c = text[i]
         next_c = text[i+1]
-        prob = trans_matrix[CHAR_TO_IDX[curr_c]][CHAR_TO_IDX[next_c]]
+        prob = matrix[CHAR_TO_IDX[curr_c]][CHAR_TO_IDX[next_c]]
         log_likelihood = np.append(log_likelihood, prob)
     
-    # CHANGE LAER
+    text = process_text(text)
+    len_text = len(text) 
+    log_likelihood = np.zeros(0)
+    for i in range(0, len(text)-1):
+        current_word = text[i]
+        next_word = text[i+1]
+        Step_probab = matrix[CHAR_TO_IDX[current_word] , CHAR_TO_IDX[next_word]]    
+        log_likelihood = np.append(log_likelihood, Step_probab) 
+
     log_likelihood = np.log(log_likelihood)
     likelihood_neglect_special_case = 0
     inf_count = 0
@@ -87,18 +97,26 @@ def log_likelihood(matrix, text):
 
 def process_df(df):
     matrices = []
+    texts = {}
     for index, row in df.iterrows():
+        author = row["author"]
         text = process_text(row["text"])
-        matrix = gen_trans_matrix(text)
-        matrices.append(matrix)
-        
-    df["matrix"] = matrices
-    print(df.columns)
-    print(df.loc[0, "matrix"])
+        if author not in texts.keys():
+            texts[author] = ""
+        texts[author] = texts[author] + text
+    data = []
+    for author in texts.keys():
+        d = {"author": author, "text": texts[author], "transition_matrix": gen_trans_matrix(texts[author])}
+        data.append(d)
+
+    text = "This is what I saw in the glass: A thin, dark man of medium stature attired in the clerical garb of the Anglican church, apparently about thirty, and with rimless, steel bowed glasses glistening beneath a sallow, olive forehead of abnormal height."
+    for d in data:
+        print(d["author"], ": ", log_likelihood(d["transition_matrix"], text))
+words = set()
+for i, r in sample_df.iterrows():
+    words.update(process_text(r["text"]).split(" "))
+print(words)
+
 
 process_df(sample_df)
     
-
-
-
-
